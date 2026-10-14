@@ -28,10 +28,10 @@ interface Page<T> {
 /** The slice of the OpenCode client this server needs. Kept narrow so tests can fake it. */
 export interface ClientLike {
   readonly session: {
-    list(input: { limit: number; order: "desc"; cursor?: string }): Promise<Page<SessionLike>>;
+    list(input: { limit: number; order?: "desc"; cursor?: string }): Promise<Page<SessionLike>>;
   };
   readonly message: {
-    list(input: { sessionID: string; limit: number; order: "asc"; cursor?: string }): Promise<Page<MessageLike>>;
+    list(input: { sessionID: string; limit: number; order?: "asc"; cursor?: string }): Promise<Page<MessageLike>>;
   };
 }
 
@@ -58,7 +58,10 @@ export class OpenCodeSource implements SessionSource {
   async *listSessions(): AsyncIterable<SessionMeta> {
     let cursor: string | undefined;
     do {
-      const page = await this.#client.session.list({ limit: PAGE, order: "desc", cursor });
+      // The API rejects `order` together with `cursor`; the cursor carries the ordering.
+      const page = await this.#client.session.list(
+        cursor ? { limit: PAGE, cursor } : { limit: PAGE, order: "desc" },
+      );
       for (const s of page.data) {
         yield {
           id: s.id,
@@ -78,7 +81,9 @@ export class OpenCodeSource implements SessionSource {
     const out: Message[] = [];
     let cursor: string | undefined;
     do {
-      const page = await this.#client.message.list({ sessionID: sessionId, limit: 200, order: "asc", cursor });
+      const page = await this.#client.message.list(
+        cursor ? { sessionID: sessionId, limit: 200, cursor } : { sessionID: sessionId, limit: 200, order: "asc" },
+      );
       for (const m of page.data) {
         const message = toMessage(m);
         if (message) out.push(message);

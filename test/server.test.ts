@@ -164,9 +164,13 @@ test("OpenCodeSource paginates sessions and messages and maps metadata", async (
     "": { data: [{ type: "user", text: "q", time: { created: 1 } }], cursor: { next: "m2" } },
     m2: { data: [{ type: "assistant", content: [{ type: "text", text: "a" }] }], cursor: {} },
   };
+  const strict = <T extends { cursor?: string; order?: string }>(i: T): T => {
+    if (i.cursor && i.order) throw new Error("Cursor cannot be combined with order");
+    return i;
+  };
   const client: ClientLike = {
-    session: { list: async (i) => sessionPages[i.cursor ?? ""]! },
-    message: { list: async (i) => messagePages[i.cursor ?? ""]! },
+    session: { list: async (i) => sessionPages[strict(i).cursor ?? ""]! },
+    message: { list: async (i) => messagePages[strict(i).cursor ?? ""]! },
   };
   const source = new OpenCodeSource(client);
   const metas = [];
